@@ -156,10 +156,11 @@ await engine.reload(selectedModel);
 
 ### Cache Backend Policy
 
-WebLLM supports three cache backends through `AppConfig.cacheBackend`:
+WebLLM supports four cache backends through `AppConfig.cacheBackend`:
 
 - `"cache"`: browser [Cache API](https://developer.mozilla.org/en-US/docs/Web/API/Cache) (default).
 - `"indexeddb"`: browser [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API).
+- `"opfs"`: browser [Origin Private File System (OPFS)](https://developer.mozilla.org/en-US/docs/Web/API/File_System_API/Origin_private_file_system).
 - `"cross-origin"`: experimental Chrome [Cross-Origin Storage API](https://github.com/WICG/cross-origin-storage) extension backend. Install the [Cross-Origin Storage extension](https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih) to use it. (If the extension isn't installed, WebLLM falls back to the default cache automatically.)
 
 Example:
@@ -174,7 +175,7 @@ const engine = await CreateMLCEngine("Llama-3.1-8B-Instruct-q4f32_1-MLC", {
 ```
 
 Notes:
-
+- If `"opfs"` is selected in an environment without OPFS support, cache operations fail with an OPFS availability error.
 - The `"cross-origin"` backend requires installing and enabling a compatible browser extension.
 - Cross-origin backend currently does not support programmatic tensor-cache deletion; clearing is extension-managed.
 
@@ -465,7 +466,7 @@ npm install
 npm run build
 ```
 
-Then, to test the effects of your code change in an example, inside `examples/get-started/package.json`, change from `"@mlc-ai/web-llm": "^0.2.81"` to `"@mlc-ai/web-llm": ../..`.
+Then, to test the effects of your code change in an example, inside `examples/get-started/package.json`, change from `"@mlc-ai/web-llm": "^0.2.83"` to `"@mlc-ai/web-llm": ../..`.
 
 Then run:
 
@@ -554,10 +555,10 @@ This project is only possible thanks to the shoulders open-source ecosystems tha
 If you find this project to be useful, please cite:
 
 ```
-@misc{ruan2024webllmhighperformanceinbrowserllm,
+@misc{ruan2026webllmhighperformanceinbrowserllm,
       title={WebLLM: A High-Performance In-Browser LLM Inference Engine},
-      author={Charlie F. Ruan and Yucheng Qin and Xun Zhou and Ruihang Lai and Hongyi Jin and Yixin Dong and Bohan Hou and Meng-Shiun Yu and Yiyan Zhai and Sudeep Agarwal and Hangrui Cao and Siyuan Feng and Tianqi Chen},
-      year={2024},
+      author={Charlie F. Ruan and Yucheng Qin and Akaash R. Parthasarathy and Xun Zhou and Ruihang Lai and Hongyi Jin and Yixin Dong and Bohan Hou and Meng-Shiun Yu and Yiyan Zhai and Sudeep Agarwal and Hangrui Cao and Siyuan Feng and Tianqi Chen},
+      year={2026},
       eprint={2412.15803},
       archivePrefix={arXiv},
       primaryClass={cs.LG},

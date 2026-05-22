@@ -9,6 +9,7 @@ import {
 import {
   ModelNotFoundError,
   ModelNotLoadedError,
+  PrefillChunkSizeSmallerThanImageError,
   SpecifiedModelNotFoundError,
   ToolCallOutputInvalidTypeError,
   ToolCallOutputMissingFieldsError,
@@ -95,8 +96,9 @@ export function cleanModelUrl(modelUrl: string): string {
   return new URL(modelUrl).href;
 }
 
-// Constants for Hermes-2-Pro models function calling
+// Constants for Hermes-2-Pro / Hermes-3 models function calling
 // Follows https://huggingface.co/NousResearch/Hermes-2-Pro-Llama-3-8B#prompt-format-for-function-calling
+//         https://huggingface.co/NousResearch/Hermes-3-Llama-3.1-8B#prompt-format-for-function-calling
 
 /**
  * Json schema used to prompt the model for function calling; directly copied from the official guide.
@@ -111,7 +113,7 @@ export const officialHermes2FunctionCallSchema = `{"properties": {"arguments": {
 export const officialHermes2FunctionCallSchemaArray = `{"type":"array","items":${officialHermes2FunctionCallSchema}}`;
 
 /**
- * Full system prompt for Hermes-2-Pro function calling.
+ * Full system prompt for Hermes-2-Pro and Hermes-3 function calling.
  */
 export const hermes2FunctionCallingSystemPrompt = `You are a function calling AI model. You are 
 provided with function signatures within <tools></tools> XML tags. You may call one or more functions 
@@ -375,11 +377,12 @@ export function getModelIdToUse(
  * Chunk the inputData such that each chunk's total input length is smaller than prefill
  * chunk size.
  * @returns [the data chunks, the input length of each chunk]
- * @note precondition: if inputData has image in it, then prefillChunkSize >= IMAGE_EMBED_SIZE.
+ * @note precondition: if inputData has image in it, then prefillChunkSize >= imageEmbedSize.
  */
 export function getChunkedPrefillInputData(
   inputData: Array<Array<number> | ImageURL>,
   prefillChunkSize: number,
+  getImageEmbedSize: (image: ImageURL) => number,
 ): [Array<Array<number> | ImageURL>[], Array<number>] {
   const chunks: Array<Array<number> | ImageURL>[] = [];
   const chunkLens: Array<number> = [];
@@ -389,7 +392,13 @@ export function getChunkedPrefillInputData(
     let curData: Array<number> | ImageURL = inputData[i];
     const curDataLen = Array.isArray(curData)
       ? curData.length
-      : IMAGE_EMBED_SIZE;
+      : getImageEmbedSize(curData);
+    if (!Array.isArray(curData) && curDataLen > prefillChunkSize) {
+      throw new PrefillChunkSizeSmallerThanImageError(
+        prefillChunkSize,
+        curDataLen,
+      );
+    }
     // 1. curData can fit into this chunk
     if (curChunkLen + curDataLen <= prefillChunkSize) {
       curChunk.push(curData);
@@ -435,7 +444,7 @@ export function getChunkedPrefillInputData(
       chunkLens.push(curChunkLen);
       // 2.2.2. Then push image to the new chunk
       curChunk = [curData];
-      curChunkLen = IMAGE_EMBED_SIZE;
+      curChunkLen = curDataLen;
       if (curChunkLen === prefillChunkSize) {
         chunks.push([...curChunk]);
         chunkLens.push(curChunkLen);
@@ -501,9 +510,6 @@ export class CustomLock {
 
 // Image related
 type ImageURL = ChatCompletionContentPartImage.ImageURL;
-
-// TODO(Charlie): currently hardcoded for phi3.5-vision num_crops 16
-export const IMAGE_EMBED_SIZE = 1921;
 
 /**
  * Given a url, get the image data. The url can either start with `http` or `data:image`.
